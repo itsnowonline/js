@@ -1,93 +1,78 @@
+/* =========================================================
+   fallbackForm.js — OFFLINE FORM (Premium UI)
+   - Same UI / behaviour as advancedForm.js
+   - Separate root overlay: #fallbackFormOverlay
+   - Exposes: window.apllOpenForm(serviceName)
+   ========================================================= */
+
 console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
 
 (function () {
 
-    // avoid double
+    // Avoid duplicates
     if (document.querySelector("#fallbackFormOverlay")) return;
 
-    /* -----------------------------------------------------
-       HTML — same layout, different IDs (no clash)
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // LOAD EXTERNAL CSS (allform.css)
+    // -----------------------------------------------------
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/css/allform.css";
+    document.head.appendChild(link);
+
+    // -----------------------------------------------------
+    // HTML — Premium layout (same structure as advanced)
+    // -----------------------------------------------------
     const overlay = document.createElement("div");
     overlay.id = "fallbackFormOverlay";
     overlay.innerHTML = `
-      <div id="fallbackFormBox" role="dialog" aria-modal="true">
+      <div id="apllFormBox" role="dialog" aria-modal="true" aria-label="Book an appointment">
+        <button id="apllCloseIcon" type="button" aria-label="Close form">×</button>
 
-        <button id="fallbackCloseIcon" type="button">×</button>
-
-        <div id="fallbackFormChip" class="apll-chip">
-          <span id="fallbackFormChipDot" class="apll-chip-dot"></span>
-          <span>Offline booking</span>
+        <div id="apllFormChip">
+          <span id="apllFormChipDot"></span>
+          <span>Easy WhatsApp booking</span>
         </div>
 
-        <h2>Easy WhatsApp Booking</h2>
-        <p id="fallbackFormSubtitle">
-          Server is offline now — but you can still book via WhatsApp.
+        <h2>Book an Appointment</h2>
+        <p id="apllFormSubtitle">
+          Choose your service, date and time — we will contact you on WhatsApp.
         </p>
 
-        <form id="fallbackForm">
-          <label for="fallbackService">Service</label>
-          <input id="fallbackService" type="text" readonly autocomplete="off" />
+        <form id="apllForm">
+          <label for="apllService">Service</label>
+          <input id="apllService" type="text" readonly autocomplete="off" />
 
-          <label for="fallbackName">Name</label>
-          <input id="fallbackName" type="text" placeholder="Your name"
+          <label for="apllName">Name</label>
+          <input id="apllName" type="text" placeholder="Your name"
                  autocomplete="name" required />
 
-          <label for="fallbackPhone">Phone</label>
-          <input id="fallbackPhone" type="tel" placeholder="Your phone number"
+          <label for="apllPhone">Phone</label>
+          <input id="apllPhone" type="tel" placeholder="Your phone number"
                  inputmode="tel" autocomplete="tel" required />
 
-          <label for="fallbackDate">Date</label>
-          <input id="fallbackDate" type="date" required autocomplete="off" />
+          <label for="apllDate">Date</label>
+          <input id="apllDate" type="date" required autocomplete="off" />
 
-          <label for="fallbackTime">Time</label>
-          <select id="fallbackTime" required>
+          <label for="apllTime">Time</label>
+          <select id="apllTime" required>
             <option value="">Select a time</option>
           </select>
 
-          <button id="fallbackSubmit" type="submit">
+          <button id="apllSubmit" type="submit">
             <span>Send via WhatsApp</span>
           </button>
-
-          <button id="fallbackClose" type="button">
+          <button id="apllClose" type="button">
             <span>Close</span>
           </button>
         </form>
-
       </div>
     `;
-
     document.body.appendChild(overlay);
 
-    /* -----------------------------------------------------
-       MAP fallback IDs → advanced CSS classes
-       (so same CSS applies directly)
-    ----------------------------------------------------- */
-
-    // Map fallback IDs → advanced CSS IDs
-    const map = {
-      "fallbackFormBox":   "apllFormBox",
-      "fallbackFormChip":  "apllFormChip",
-      "fallbackFormChipDot": "apllFormChipDot",
-      "fallbackFormSubtitle": "apllFormSubtitle",
-      "fallbackCloseIcon": "apllCloseIcon",
-      "fallbackSubmit":     "apllSubmit",
-      "fallbackClose":      "apllClose",
-      "fallbackTime":       "apllTime"
-    };
-
-    for (const src in map) {
-      const elm = overlay.querySelector("#" + src);
-      if (elm) elm.id = map[src];  // rename to match CSS
-    }
-
-    // Rename main overlay to use same CSS
-    overlay.id = "apllFormOverlay";
-
-    /* -----------------------------------------------------
-       JS LOGIC (same as advanced, offline wording)
-    ----------------------------------------------------- */
-
+    // -----------------------------------------------------
+    // JS LOGIC — same as advancedForm.js
+    // -----------------------------------------------------
     const WHATSAPP = "393318358086";
     const TIME_SLOTS = [
       "09:00","09:30","10:00","10:30",
@@ -95,38 +80,38 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
       "16:00","16:30","17:00","17:30"
     ];
 
-    const serviceField = overlay.querySelector("#fallbackService") || overlay.querySelector("#apllService");
-    const nameField    = overlay.querySelector("#fallbackName");
-    const phoneField   = overlay.querySelector("#fallbackPhone");
-    const dateField    = overlay.querySelector("#fallbackDate");
+    const serviceField = overlay.querySelector("#apllService");
+    const nameField    = overlay.querySelector("#apllName");
+    const phoneField   = overlay.querySelector("#apllPhone");
+    const dateField    = overlay.querySelector("#apllDate");
     const timeField    = overlay.querySelector("#apllTime");
 
     const submitBtn    = overlay.querySelector("#apllSubmit");
     const closeBtn     = overlay.querySelector("#apllClose");
     const closeIconBtn = overlay.querySelector("#apllCloseIcon");
 
-    // Dates
-    const today = new Date();
+    // Date setup
+    const today   = new Date();
     const maxDate = new Date();
     maxDate.setDate(today.getDate() + 14);
 
     const toInput = d => d.toISOString().split("T")[0];
-    const todayStr = toInput(today);
 
-    dateField.min = todayStr;
-    dateField.max = toInput(maxDate);
+    const todayStr = toInput(today);
+    dateField.min  = todayStr;
+    dateField.max  = toInput(maxDate);
     dateField.value = todayStr;
 
-    function isClosedDay(d) {
+    function isClosedDate(d) {
       const day = d.getDay();
-      return day === 0 || day === 6;
+      return day === 0 || day === 6; // Sun & Sat closed
     }
 
-    function fillSlots() {
+    function fillTimeSlotsForCurrentDate() {
       const d = new Date(dateField.value + "T00:00");
       timeField.innerHTML = "";
 
-      if (isClosedDay(d)) {
+      if (isClosedDate(d)) {
         timeField.classList.add("apll-closed");
         timeField.disabled = true;
         timeField.innerHTML = `<option value="">Closed (weekend)</option>`;
@@ -137,17 +122,16 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
       timeField.disabled = false;
       timeField.innerHTML = `<option value="">Select a time</option>`;
       TIME_SLOTS.forEach(t => {
-        const o = document.createElement("option");
-        o.value = t;
-        o.textContent = t;
-        timeField.appendChild(o);
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        timeField.appendChild(opt);
       });
     }
 
-    dateField.addEventListener("change", fillSlots);
-    fillSlots();
+    dateField.addEventListener("change", fillTimeSlotsForCurrentDate);
 
-    /* SCROLL LOCK */
+    // Scroll lock
     function lockScroll() {
       document.body.classList.add("overlay-lock");
     }
@@ -155,6 +139,7 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
       document.body.classList.remove("overlay-lock");
     }
 
+    // Close logic
     function hideOverlay() {
       unlockScroll();
       overlay.classList.remove("is-visible");
@@ -167,7 +152,7 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
       if (e.target === overlay) hideOverlay();
     });
 
-    /* SEND WHATSAPP */
+    // Submit → WhatsApp
     submitBtn.addEventListener("click", e => {
       e.preventDefault();
 
@@ -178,37 +163,45 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
       const time    = timeField.value;
 
       if (!service || !name || !phone || !date || !time || timeField.disabled) {
-        alert("Please fill all fields correctly.");
+        alert("Please fill all fields and select a valid working day.");
         return;
       }
 
       const formatted = new Date(date).toLocaleDateString("en-GB");
 
       const msg =
-`Hello, I want to book (offline mode):
+`Hello, I would like to book:
 • Service: ${service}
 • Name: ${name}
 • Phone: ${phone}
 • Date: ${formatted}
 • Time: ${time}
 
+(Offline version)
 Thank you`;
 
-      window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
+      const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank");
     });
 
-    /* GLOBAL OPEN FUNCTION */
-    window.apllOpenFallbackForm = function (serviceName) {
-      console.log("[fallbackForm] Opening fallback form…");
+    // Initialize today’s slots
+    fillTimeSlotsForCurrentDate();
+
+    // -----------------------------------------------------
+    // Global entry — SAME NAME as advanced
+    // -----------------------------------------------------
+    window.apllOpenForm = function (serviceName) {
+      console.log("[fallbackForm] Open request — service:", serviceName);
 
       serviceField.value = serviceName || "Service";
       nameField.value = "";
       phoneField.value = "";
       dateField.value = todayStr;
 
-      fillSlots();
+      fillTimeSlotsForCurrentDate();
+
       lockScroll();
       overlay.classList.add("is-visible");
     };
 
-})();
+})(); // IIFE end
