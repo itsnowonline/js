@@ -1,193 +1,174 @@
-/* =========================================================
-   fallbackForm.js — OFFLINE FORM (Premium UI)
-   - Same layout as advancedForm.js
-   - Uses /css/allform.css
-   - Works when server is offline
-   - Global entry: window.apllOpenFallbackForm(serviceName)
-   ========================================================= */
+// ==============================
+// fallbackForm.js — OFFLINE FORM (white background)
+// Hosted at: https://itsnowonline.github.io/js/fallbackForm.js
+// ==============================
 
-console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
+console.log("[fallbackForm] Script loaded.");
 
-(function () {
+const FBF_WHATSAPP_NUMBER = "393318358086";
+const FBF_TIME_SLOTS = [
+  "09:00","09:30","10:00","10:30",
+  "11:00","11:30","15:00","15:30",
+  "16:00","16:30","17:00","17:30"
+];
 
-    if (document.querySelector("#fallbackFormOverlay")) return;
+function fbfIsClosedDay(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
 
-    /* -----------------------------------------------------
-       HTML — exact same markup as advancedForm.js
-    ----------------------------------------------------- */
+function fbfToInputDate(date) {
+  return date.toISOString().split("T")[0];
+}
 
-    const overlay = document.createElement("div");
-    overlay.id = "fallbackFormOverlay";
-    overlay.className = "fallback-overlay"; // optional, not needed but clean
+function fbfCreateFormIfNeeded() {
+  if (document.querySelector("#apllFormOverlay")) return;
 
-    overlay.innerHTML = `
-      <div id="apllFormBox" role="dialog" aria-modal="true">
-        <button id="apllCloseIcon_f" type="button">×</button>
+  const overlay = document.createElement("div");
+  overlay.id = "apllFormOverlay";
+  overlay.className = "reservation-overlay";
+  overlay.innerHTML = `
+    <div class="reservation-box">
+      <form id="apllReservationForm">
+        <h2>Prenota un Appuntamento</h2>
 
-        <div id="apllFormChip">
-          <span id="apllFormChipDot"></span>
-          <span>Offline booking</span>
-        </div>
+        <label for="apllService">Servizio</label>
+        <input id="apllService" type="text" readonly />
 
-        <h2>Book an Appointment</h2>
-        <p id="apllFormSubtitle">This is the offline form version. Booking via WhatsApp still works normally.</p>
+        <label for="apllName">Nome</label>
+        <input id="apllName" type="text" placeholder="Il tuo nome" required />
 
-        <form id="fallbackForm">
-          <label for="apllService_f">Service</label>
-          <input id="apllService_f" type="text" readonly autocomplete="off" />
+        <label for="apllPhone">Telefono</label>
+        <input id="apllPhone" type="tel" placeholder="Il tuo numero" required />
 
-          <label for="apllName_f">Name</label>
-          <input id="apllName_f" type="text" placeholder="Your name"
-                 autocomplete="name" required />
+        <label for="apllDate">Data</label>
+        <input id="apllDate" type="date" required inputmode="none"
+          style="-webkit-appearance:none; appearance:none;" />
 
-          <label for="apllPhone_f">Phone</label>
-          <input id="apllPhone_f" type="tel" placeholder="Your phone number"
-                 inputmode="tel" autocomplete="tel" required />
+        <label for="apllTime">Orario</label>
+        <select id="apllTime" required>
+          <option value="">Seleziona un orario</option>
+        </select>
 
-          <label for="apllDate_f">Date</label>
-          <input id="apllDate_f" type="date" required autocomplete="off" />
+        <button id="apllWhatsAppBtn" class="btn btn-primary" type="submit">
+          Invia su WhatsApp
+        </button>
+        <button id="apllCloseBtn" class="btn btn-outline" type="button">
+          Chiudi
+        </button>
+      </form>
+    </div>
+  `;
 
-          <label for="apllTime_f">Time</label>
-          <select id="apllTime_f" required>
-            <option value="">Select a time</option>
-          </select>
+  document.body.appendChild(overlay);
 
-          <button id="apllSubmit_f" type="submit">Send via WhatsApp</button>
-          <button id="apllClose_f" type="button">Close</button>
-        </form>
-      </div>
-    `;
+  const formContainer = overlay;
+  const serviceField = overlay.querySelector("#apllService");
+  const nameField = overlay.querySelector("#apllName");
+  const phoneField = overlay.querySelector("#apllPhone");
+  const dateField = overlay.querySelector("#apllDate");
+  const timeField = overlay.querySelector("#apllTime");
+  const whatsappBtn = overlay.querySelector("#apllWhatsAppBtn");
+  const closeBtn = overlay.querySelector("#apllCloseBtn");
 
-    document.body.appendChild(overlay);
+  // Date setup
+  const today = new Date();
+  const maxDate = new Date();
+  maxDate.setDate(today.getDate() + 14);
+  const todayStr = fbfToInputDate(today);
+  dateField.min = todayStr;
+  dateField.max = fbfToInputDate(maxDate);
+  dateField.value = todayStr;
 
-    /* -----------------------------------------------------
-       JS LOGIC — identical behaviour to advancedForm.js
-    ----------------------------------------------------- */
-
-    const WHATSAPP = "393318358086";
-    const TIME_SLOTS = [
-      "09:00","09:30","10:00","10:30",
-      "11:00","11:30","15:00","15:30",
-      "16:00","16:30","17:00","17:30"
-    ];
-
-    const serviceField = overlay.querySelector("#apllService_f");
-    const nameField    = overlay.querySelector("#apllName_f");
-    const phoneField   = overlay.querySelector("#apllPhone_f");
-    const dateField    = overlay.querySelector("#apllDate_f");
-    const timeField    = overlay.querySelector("#apllTime_f");
-
-    const submitBtn    = overlay.querySelector("#apllSubmit_f");
-    const closeBtn     = overlay.querySelector("#apllClose_f");
-    const closeIconBtn = overlay.querySelector("#apllCloseIcon_f");
-
-    /* Date setup */
-    const today   = new Date();
-    const maxDate = new Date();
-    maxDate.setDate(today.getDate() + 14);
-
-    const toInput = d => d.toISOString().split("T")[0];
-
-    const todayStr = toInput(today);
-    dateField.min = todayStr;
-    dateField.max = toInput(maxDate);
-    dateField.value = todayStr;
-
-    function isClosedDate(d) {
-      const day = d.getDay();
-      return day === 0 || day === 6;
-    }
-
-    function fillTimeSlots() {
-      const d = new Date(dateField.value + "T00:00");
-      timeField.innerHTML = "";
-
-      if (isClosedDate(d)) {
-        timeField.classList.add("apll-closed");
-        timeField.disabled = true;
-        timeField.innerHTML = `<option value="">Closed (weekend)</option>`;
-        return;
-      }
-
-      timeField.classList.remove("apll-closed");
-      timeField.disabled = false;
-      timeField.innerHTML = `<option value="">Select a time</option>`;
-      TIME_SLOTS.forEach(t => {
-        const opt = document.createElement("option");
-        opt.value = t;
-        opt.textContent = t;
-        timeField.appendChild(opt);
-      });
-    }
-
-    dateField.addEventListener("change", fillTimeSlots);
-
-    /* Scroll-lock system */
-    function lockScroll() { document.body.classList.add("overlay-lock"); }
-    function unlockScroll() { document.body.classList.remove("overlay-lock"); }
-
-    /* Close logic */
-    function hideOverlay() {
-      unlockScroll();
-      overlay.classList.remove("is-visible");
-    }
-
-    closeBtn.onclick = hideOverlay;
-    closeIconBtn.onclick = hideOverlay;
-
-    overlay.addEventListener("click", e => {
-      if (e.target === overlay) hideOverlay();
-    });
-
-    /* WhatsApp send */
-    submitBtn.addEventListener("click", e => {
-      e.preventDefault();
-
-      const service = serviceField.value.trim();
-      const name    = nameField.value.trim();
-      const phone   = phoneField.value.trim();
-      const date    = dateField.value;
-      const time    = timeField.value;
-
-      if (!service || !name || !phone || !date || !time || timeField.disabled) {
-        alert("Please fill all fields correctly.");
-        return;
-      }
-
-      const formatted = new Date(date).toLocaleDateString("en-GB");
-
-      const msg =
-`Hello, I would like to book:
-• Service: ${service}
-• Name: ${name}
-• Phone: ${phone}
-• Date: ${formatted}
-• Time: ${time}
-
-(Offline version form)
-Thank you`;
-
-      const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
-      window.open(url, "_blank");
-    });
-
-    fillTimeSlots();
-
-    /* -----------------------------------------------------
-       Global open function
-    ----------------------------------------------------- */
-    window.apllOpenFallbackForm = function (serviceName) {
-      console.log("[fallbackForm] Open request —", serviceName);
-
-      serviceField.value = serviceName || "Service";
-      nameField.value = "";
-      phoneField.value = "";
+  // Prevent past date
+  dateField.addEventListener("input", () => {
+    const selected = new Date(dateField.value + "T00:00");
+    const todayMid = new Date(todayStr + "T00:00");
+    if (selected < todayMid) {
       dateField.value = todayStr;
+    }
+  });
 
-      fillTimeSlots();
+  // Change date -> slots
+  dateField.addEventListener("change", () => {
+    const d = new Date(dateField.value + "T00:00");
+    timeField.innerHTML = "";
 
-      lockScroll();
-      overlay.classList.add("is-visible");
-    };
+    if (fbfIsClosedDay(d)) {
+      timeField.innerHTML = `<option value="">Chiuso</option>`;
+      return;
+    }
+    timeField.innerHTML = `<option value="">Seleziona un orario</option>`;
+    FBF_TIME_SLOTS.forEach(t => {
+      timeField.innerHTML += `<option value="${t}">${t}</option>`;
+    });
+  });
 
-})();
+  // Close button
+  closeBtn.addEventListener("click", () => {
+    formContainer.classList.remove("is-visible");
+  });
+
+  // Click outside
+  overlay.addEventListener("click", evt => {
+    if (evt.target === overlay) {
+      formContainer.classList.remove("is-visible");
+    }
+  });
+
+  // WhatsApp send
+  whatsappBtn.addEventListener("click", e => {
+    e.preventDefault();
+
+    const service = serviceField.value.trim();
+    const name = nameField.value.trim();
+    const phone = phoneField.value.trim();
+    const date = dateField.value;
+    const time = timeField.value;
+
+    if (!service || !name || !phone || !date || !time) {
+      alert("Riempi tutti i campi.");
+      return;
+    }
+
+    const formatted = new Date(date).toLocaleDateString("it-IT");
+    const msg =
+      `Ciao, vorrei prenotare:%0A` +
+      `• Servizio: ${service}%0A` +
+      `• Nome: ${name}%0A` +
+      `• Telefono: ${phone}%0A` +
+      `• Data: ${formatted}%0A` +
+      `• Orario: ${time}%0A%0AGrazie`;
+
+    const link = `https://wa.me/${FBF_WHATSAPP_NUMBER}?text=${msg}`;
+    window.open(`https://wa.me/${FBF_WHATSAPP_NUMBER}?text=${msg}`, "_blank");
+  });
+}
+
+// Global for loadForm.js
+window.apllOpenForm = function (serviceName) {
+  fbfCreateFormIfNeeded();
+
+  const overlay = document.querySelector("#apllFormOverlay");
+  if (!overlay) {
+    console.error("[fallbackForm] Overlay not found.");
+    return;
+  }
+
+  const serviceField = overlay.querySelector("#apllService");
+  const nameField = overlay.querySelector("#apllName");
+  const phoneField = overlay.querySelector("#apllPhone");
+  const dateField = overlay.querySelector("#apllDate");
+  const timeField = overlay.querySelector("#apllTime");
+
+  serviceField.value = serviceName || "Servizio CAF";
+  nameField.value = "";
+  phoneField.value = "";
+  timeField.innerHTML = `<option value="">Seleziona un orario</option>`;
+
+  const today = new Date();
+  const todayStr = fbfToInputDate(today);
+  dateField.value = todayStr;
+
+  overlay.classList.add("is-visible");
+};
