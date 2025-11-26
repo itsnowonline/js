@@ -4,6 +4,7 @@
    - Separate overlay: #fallbackFormOverlay
    - Uses CSS from /css/allform.css
    - Uses window.APLL_COUNTRIES from countriesCode.js
+   - Smart phone parsing + validation (your rules)
    ========================================================= */
 
 console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
@@ -106,40 +107,168 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     const closeIconBtn = overlay.querySelector("#apllCloseIcon");
 
     // -----------------------------------------------------
-    // Populate countries
+    // Countries dropdown
     // -----------------------------------------------------
     function populateCountries() {
-        if (!window.APLL_COUNTRIES) {
-            console.error("APLL_COUNTRIES not loaded");
-            return;
-        }
+      const list = window.APLL_COUNTRIES;
+      if (!Array.isArray(list) || !list.length) {
+        console.error("[fallbackForm] APLL_COUNTRIES missing or empty");
+        return;
+      }
 
-        window.APLL_COUNTRIES.forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c.code;
-            opt.textContent = `${c.flag} ${c.code}`;
-            countrySel.appendChild(opt);
+      // Optional: sort by name
+      list
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = c.code; // e.g. "+39"
+          opt.textContent = `${c.flag} ${c.code}`;
+          opt.dataset.iso = c.iso;
+          countrySel.appendChild(opt);
         });
 
-        // Default Italy
-        countrySel.value = "+39";
+      // Default Italy
+      const defaultCode = "+39";
+      if (list.some(c => c.code === defaultCode)) {
+        countrySel.value = defaultCode;
+      } else {
+        countrySel.selectedIndex = 0;
+      }
+
+      console.log("[fallbackForm] Countries loaded:", list.length);
     }
 
     populateCountries();
 
-    // Auto-remove spaces & hyphens
+    // -----------------------------------------------------
+    // Phone helpers
+    // -----------------------------------------------------
+
+    // Guard to avoid recursive input events
+    let updatingPhoneProgrammatically = false;
+
+    // Parse international string like "+3933190..." or "00393319..."
+    function parseInternational(raw) {
+      if (!raw) return null;
+
+      let s = String(raw).trim();
+      if (!s.startsWith("+") && !s.startsWith("00")) return null;
+
+      // 00 → +
+      if (s.startsWith("00")) {
+        s = "+" + s.slice(2);
+      }
+
+      // Keep only "+" and digits
+      s = s.replace(/[^\d+]/g, "");
+      if (!s.startsWith("+")) return null;
+
+      const countries = Array.isArray(window.APLL_COUNTRIES)
+        ? window.APLL_COUNTRIES
+        : [];
+
+      let best = null;
+      for (const c of countries) {
+        if (s.startsWith(c.code)) {
+          if (!best || c.code.length > best.code.length) {
+            best = c;
+          }
+        }
+      }
+
+      if (!best) return null;
+
+      const localDigits = s
+        .slice(best.code.length)   // remove +39
+        .replace(/\D/g, "");       // digits only
+
+      return {
+        country: best,
+        local: localDigits
+      };
+    }
+
+function sanitizeLocalDigits(raw) {
+  if (!raw) return "";
+  return String(raw).replace(/[^\d+]/g, ""); // allow digits + plus sign
+}
+
+    // Basic country-based validation (local/national number)
+    function isValidLocalNumber(code, localDigits) {
+      const len = localDigits.length;
+
+      switch (code) {
+        case "+39": // Italy mobile usually 9–11 digits incl leading 3
+          return len >= 8 && len <= 11;
+        case "+91": // India
+          return len === 10;
+        case "+92": // Pakistan
+          return len === 10;
+        case "+880": // Bangladesh
+          return len >= 9 && len <= 11;
+        case "+1": // US/Canada
+          return len === 10;
+        default:
+          // generic: 6–15 digits
+          return len >= 6 && len <= 15;
+      }
+    }
+
+    // -----------------------------------------------------
+    // Phone input behaviour
+    // -----------------------------------------------------
     phoneField.addEventListener("input", () => {
-        phoneField.value = phoneField.value.replace(/[\s\-]+/g, "");
+      if (updatingPhoneProgrammatically) return;
+
+      let raw = phoneField.value;
+
+      // If user starts with + or 00 → try to detect country
+      if (raw.startsWith("+") || raw.startsWith("00")) {
+        const parsed = parseInternational(raw);
+        if (parsed) {
+          updatingPhoneProgrammatically = true;
+          countrySel.value = parsed.country.code;
+          phoneField.value = parsed.local;        // only local digits
+          updatingPhoneProgrammatically = false;
+          return;
+        }
+      }
+
+      // Normal typing: keep only digits
+      const digits = sanitizeLocalDigits(raw);
+      if (digits !== raw) {
+        updatingPhoneProgrammatically = true;
+        phoneField.value = digits;
+        updatingPhoneProgrammatically = false;
+      }
     });
 
-    // If phone begins with +39xxxxx → set country automatically
+    // Also sanitize on blur (in case autofill happens after load)
     phoneField.addEventListener("blur", () => {
-        const num = phoneField.value;
+      if (updatingPhoneProgrammatically) return;
 
-        if (num.startsWith("39")) countrySel.value = "+39";
-        else if (num.startsWith("91")) countrySel.value = "+91";
-        else if (num.startsWith("92")) countrySel.value = "+92";
-        else if (num.startsWith("1"))  countrySel.value = "+1";
+      const raw = phoneField.value;
+      if (!raw) return;
+
+      // If blur value still starts with + / 00 → try one more time
+      if (raw.startsWith("+") || raw.startsWith("00")) {
+        const parsed = parseInternational(raw);
+        if (parsed) {
+          updatingPhoneProgrammatically = true;
+          countrySel.value = parsed.country.code;
+          phoneField.value = parsed.local;
+          updatingPhoneProgrammatically = false;
+          return;
+        }
+      }
+
+      const clean = sanitizeLocalDigits(raw);
+      if (clean !== raw) {
+        updatingPhoneProgrammatically = true;
+        phoneField.value = clean;
+        updatingPhoneProgrammatically = false;
+      }
     });
 
     // -----------------------------------------------------
@@ -157,8 +286,8 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     dateField.value = todayStr;
 
     function isClosedDate(d) {
-        const day = d.getDay();
-        return day === 0 || day === 6;
+      const day = d.getDay();
+      return day === 0 || day === 6;
     }
 
     function fillTimeSlots() {
@@ -209,20 +338,28 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     submitBtn.addEventListener("click", e => {
       e.preventDefault();
 
-      const s = serviceField.value.trim();
-      const n = nameField.value.trim();
-      const eMail = emailField.value.trim();
-      const cCode = countrySel.value;
-      const p = phoneField.value.trim();
-      const d = dateField.value;
-      const t = timeField.value;
+      const s      = serviceField.value.trim();
+      const n      = nameField.value.trim();
+      const eMail  = emailField.value.trim();
+      const cCode  = countrySel.value;
+      const local  = sanitizeLocalDigits(phoneField.value.trim());
+      const d      = dateField.value;
+      const t      = timeField.value;
 
-      if (!s || !n || !eMail || !p || !d || !t) {
+      if (!s || !n || !eMail || !local || !d || !t) {
         alert("Please fill all required fields.");
         return;
       }
 
-      const fullPhone = cCode.replace("+", "") + p;
+      // Country-based validation
+      if (!isValidLocalNumber(cCode, local)) {
+        alert("Please enter a valid phone number for the selected country.");
+        return;
+      }
+
+      // Final full phone WITHOUT plus (for wa.me)
+      const fullPhone = cCode.replace("+", "") + local;
+
       const formatted = new Date(d).toLocaleDateString("en-GB");
 
       const msg =
@@ -245,6 +382,8 @@ Thank you`;
     // Global open function
     // -----------------------------------------------------
     window.apllOpenForm = function (serviceName) {
+      console.log("[fallbackForm] Open request — service:", serviceName);
+
       serviceField.value = serviceName || "Service";
       nameField.value = "";
       emailField.value = "";
