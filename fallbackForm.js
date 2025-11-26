@@ -1,28 +1,31 @@
 /* =========================================================
-   fallbackForm.js — OFFLINE FORM (PREMIUM with Email & Country)
+   fallbackForm.js — OFFLINE FORM (Premium UI)
+   Adds:
+   ✔ Country selector (35%)
+   ✔ Phone input (65%)
+   ✔ Email field
+   ✔ Auto-detect +39
    ========================================================= */
 
-console.log("[fallbackForm] Loaded (OFFLINE FINAL)");
+console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
 
 (function () {
 
     if (document.querySelector("#fallbackFormOverlay")) return;
 
-    /* Load CSS */
+    /* -----------------------------------------------------
+       LOAD CSS
+    ----------------------------------------------------- */
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = "/css/allform.css";
     document.head.appendChild(link);
 
-    /* Load countries list (only once) */
-    const cs = document.createElement("script");
-    cs.src = "/js/countriesCode.js?v=" + Date.now();
-    document.head.appendChild(cs);
-
-    /* HTML */
+    /* -----------------------------------------------------
+       HTML
+    ----------------------------------------------------- */
     const overlay = document.createElement("div");
     overlay.id = "fallbackFormOverlay";
-
     overlay.innerHTML = `
       <div id="apllFormBox" role="dialog" aria-modal="true">
         <button id="apllCloseIcon" type="button">×</button>
@@ -40,60 +43,120 @@ console.log("[fallbackForm] Loaded (OFFLINE FINAL)");
         <form id="apllForm">
 
           <label for="apllService">Service</label>
-          <input id="apllService" type="text" readonly />
+          <input id="apllService" type="text" readonly autocomplete="off" />
 
           <label for="apllName">Name</label>
-          <input id="apllName" type="text" placeholder="Your name" autocomplete="name" required />
+          <input id="apllName" type="text" placeholder="Your name"
+                 autocomplete="name" required />
 
-          <!-- PHONE ROW -->
+          <label for="apllEmail">Email</label>
+          <input id="apllEmail" type="email" placeholder="Your email"
+                 autocomplete="email" required />
+
           <label>Phone</label>
           <div class="apll-phone-row">
-            <select id="apllCountry" class="apll-country-select"></select>
-            <input id="apllPhone" type="tel" placeholder="Your phone number" inputmode="tel" required />
+            <select id="apllCountry" class="apll-inline-select" required></select>
+            <input id="apllPhone" type="tel" placeholder="Your number"
+                   inputmode="tel" autocomplete="tel" required />
           </div>
 
-          <label for="apllEmail">Your Email</label>
-          <input id="apllEmail" type="email" placeholder="Your email address" autocomplete="email" required />
-
           <label for="apllDate">Date</label>
-          <input id="apllDate" type="date" required />
+          <input id="apllDate" type="date" required autocomplete="off" />
 
           <label for="apllTime">Time</label>
           <select id="apllTime" required>
             <option value="">Select a time</option>
           </select>
 
-          <button id="apllSubmit" type="submit">
-            <span>Send via WhatsApp</span>
-          </button>
+          <button id="apllSubmit" type="submit"><span>Send via WhatsApp</span></button>
           <button id="apllClose" type="button"><span>Close</span></button>
+
         </form>
       </div>
     `;
-
     document.body.appendChild(overlay);
 
-    /* ELEMENTS */
-    const countryField = overlay.querySelector("#apllCountry");
-    const phoneField   = overlay.querySelector("#apllPhone");
-    const emailField   = overlay.querySelector("#apllEmail");
+    /* -----------------------------------------------------
+       INLINE CSS (only for phone row, safe)
+    ----------------------------------------------------- */
+    const phoneCSS = document.createElement("style");
+    phoneCSS.textContent = `
+      .apll-phone-row {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+      }
+      #apllCountry {
+        width: 35%;
+        padding: 9px 11px;
+        border-radius: 9px;
+        border: 1px solid #c8ced8;
+        font-size: 15px;
+        background: rgba(255,255,255,0.96);
+      }
+      #apllPhone {
+        width: 65%;
+      }
+    `;
+    document.head.appendChild(phoneCSS);
+
+    /* -----------------------------------------------------
+       JS LOGIC
+    ----------------------------------------------------- */
+
+    const WHATSAPP = "393318358086";
+    const TIME_SLOTS = [
+      "09:00","09:30","10:00","10:30",
+      "11:00","11:30","15:00","15:30",
+      "16:00","16:30","17:00","17:30"
+    ];
+
     const serviceField = overlay.querySelector("#apllService");
     const nameField    = overlay.querySelector("#apllName");
+    const emailField   = overlay.querySelector("#apllEmail");
+    const phoneField   = overlay.querySelector("#apllPhone");
+    const countrySel   = overlay.querySelector("#apllCountry");
     const dateField    = overlay.querySelector("#apllDate");
     const timeField    = overlay.querySelector("#apllTime");
 
-    const closeBtn     = overlay.querySelector("#apllClose");
-    const closeIcon    = overlay.querySelector("#apllCloseIcon");
     const submitBtn    = overlay.querySelector("#apllSubmit");
+    const closeBtn     = overlay.querySelector("#apllClose");
+    const closeIconBtn = overlay.querySelector("#apllCloseIcon");
 
-    /* TIME SLOTS */
-    const TIME_SLOTS = ["09:00","09:30","10:00","10:30","11:00","11:30","15:00","15:30","16:00","16:30","17:00","17:30"];
+    /* -----------------------------------------------------
+       COUNTRY LIST SETUP
+    ----------------------------------------------------- */
 
-    /* DATE SETUP */
+    function loadCountries() {
+      if (!window.APLL_COUNTRIES) {
+        console.error("countriesCode.js not loaded");
+        countrySel.innerHTML = `<option value="+39">🇮🇹 +39</option>`;
+        return;
+      }
+
+      countrySel.innerHTML = window.APLL_COUNTRIES
+        .map(c => `<option value="${c.code}">${c.flag} ${c.code}</option>`)
+        .join("");
+
+      // Default Italy
+      countrySel.value = "+39";
+    }
+
+    loadCountries();
+
+    /* Phone sanitization */
+    phoneField.addEventListener("input", () => {
+      phoneField.value = phoneField.value.replace(/[^\d]/g, "");
+    });
+
+    /* -----------------------------------------------------
+       DATE SETUP
+    ----------------------------------------------------- */
     const today = new Date();
     const maxDate = new Date();
     maxDate.setDate(today.getDate() + 14);
     const toInput = d => d.toISOString().split("T")[0];
+
     dateField.min = toInput(today);
     dateField.max = toInput(maxDate);
     dateField.value = toInput(today);
@@ -103,63 +166,52 @@ console.log("[fallbackForm] Loaded (OFFLINE FINAL)");
       return day === 0 || day === 6;
     }
 
-    function updateTime() {
+    function fillTimeSlots() {
       const d = new Date(dateField.value + "T00:00");
       timeField.innerHTML = "";
 
       if (isClosedDate(d)) {
+        timeField.classList.add("apll-closed");
         timeField.disabled = true;
-        timeField.innerHTML = `<option>Closed (weekend)</option>`;
+        timeField.innerHTML = `<option value="">Closed (weekend)</option>`;
         return;
       }
 
+      timeField.classList.remove("apll-closed");
       timeField.disabled = false;
       timeField.innerHTML = `<option value="">Select a time</option>`;
+
       TIME_SLOTS.forEach(t => {
-        timeField.innerHTML += `<option value="${t}">${t}</option>`;
+        const opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = t;
+        timeField.appendChild(opt);
       });
     }
 
-    dateField.addEventListener("change", updateTime);
-    updateTime();
+    dateField.addEventListener("change", fillTimeSlots);
+    fillTimeSlots();
 
-    /* SCROLL LOCK */
-    const lockScroll = () => document.body.classList.add("overlay-lock");
-    const unlockScroll = () => document.body.classList.remove("overlay-lock");
+    /* -----------------------------------------------------
+       SCROLL LOCK
+    ----------------------------------------------------- */
+    function lockScroll() { document.body.classList.add("overlay-lock"); }
+    function unlockScroll() { document.body.classList.remove("overlay-lock"); }
 
-    overlay.addEventListener("click", e => {
-      if (e.target === overlay) hide();
-    });
-
-    const hide = () => {
+    function hideOverlay() {
       unlockScroll();
       overlay.classList.remove("is-visible");
-    };
+    }
 
-    closeBtn.onclick = hide;
-    closeIcon.onclick = hide;
-
-    /* LOAD COUNTRIES INTO DROPDOWN */
-    cs.onload = () => {
-      countryField.innerHTML = "";
-
-      APLL_COUNTRIES.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c.code;
-        opt.textContent = `${c.flag} ${c.code}`;
-        countryField.appendChild(opt);
-      });
-
-      /* Default = Italy */
-      countryField.value = "+39";
-    };
-
-    /* CLEAN PHONE INPUT */
-    phoneField.addEventListener("input", () => {
-      phoneField.value = phoneField.value.replace(/[^0-9]/g, "");
+    closeBtn.onclick = hideOverlay;
+    closeIconBtn.onclick = hideOverlay;
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay) hideOverlay();
     });
 
-    /* FORM SUBMIT */
+    /* -----------------------------------------------------
+       SUBMIT
+    ----------------------------------------------------- */
     submitBtn.addEventListener("click", e => {
       e.preventDefault();
 
@@ -167,47 +219,45 @@ console.log("[fallbackForm] Loaded (OFFLINE FINAL)");
       const name    = nameField.value.trim();
       const email   = emailField.value.trim();
       const phone   = phoneField.value.trim();
-      const country = countryField.value;
+      const code    = countrySel.value;
       const date    = dateField.value;
       const time    = timeField.value;
 
-      if (!email.includes("@")) {
-        alert("Enter a valid email address.");
+      if (!service || !name || !email || !phone || !date || !time || timeField.disabled) {
+        alert("Please fill all fields correctly.");
         return;
       }
 
-      if (phone.length < 5) {
-        alert("Enter a valid phone number.");
-        return;
-      }
+      const fullPhone = code.replace("+","") + phone;
 
-      const fullPhone = country.replace("+","") + phone;
-
-      const msg = 
+      const msg =
 `Hello, I would like to book:
 • Service: ${service}
 • Name: ${name}
-• Phone: ${fullPhone}
 • Email: ${email}
+• Phone: +${fullPhone}
 • Date: ${new Date(date).toLocaleDateString("en-GB")}
 • Time: ${time}
 
-(Offline form)
+(Offline version)
 Thank you`;
 
-      window.open(`https://wa.me/393318358086?text=${encodeURIComponent(msg)}`, "_blank");
+      window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
     });
 
-    /* PUBLIC API */
-    window.apllOpenForm = (serviceName) => {
+    /* -----------------------------------------------------
+       GLOBAL OPEN FUNCTION
+    ----------------------------------------------------- */
+    window.apllOpenForm = function (serviceName) {
+
       serviceField.value = serviceName || "Service";
       nameField.value = "";
       emailField.value = "";
       phoneField.value = "";
-      countryField.value = "+39";
+      countrySel.value = "+39";
       dateField.value = toInput(today);
 
-      updateTime();
+      fillTimeSlots();
       lockScroll();
       overlay.classList.add("is-visible");
     };
