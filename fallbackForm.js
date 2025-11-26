@@ -1,61 +1,60 @@
 /* =========================================================
-   fallbackForm.js — OFFLINE FORM (Premium UI)
-   - Uses EXACT SAME IDs as advancedForm.js
-   - Uses same CSS (/css/allform.css)
-   - Fully compatible with loadForm.js
-   - Global entry: window.apllOpenFallbackForm(serviceName)
-========================================================= */
+   fallbackForm.js — OFFLINE FORM (Premium UI - No CSS)
+   - ID-safe version
+   - No conflict with advancedForm.js
+   - No CSS (will use /css/allform.css later)
+   - Global open function: window.apllOpenFallbackForm()
+   ========================================================= */
 
-console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
+console.log("[fallbackForm] Loaded — ID safe version");
 
 (function () {
 
-    // Prevent duplicates
-    if (document.querySelector("#apllFormOverlay")) return;
+    /* Prevent duplicate inject */
+    if (document.querySelector("#fallbackFormOverlay")) return;
 
-    /* ----------------------------------------------------
-       HTML — EXACT SAME MARKUP AS advancedForm (IMPORTANT)
-    ---------------------------------------------------- */
+    /* -----------------------------------------------------
+       HTML (same structure as advancedForm.js but IDs unique)
+    ----------------------------------------------------- */
 
     const overlay = document.createElement("div");
-    overlay.id = "apllFormOverlay"; // <— SAME ID
-    overlay.innerHTML = `
-      <div id="apllFormBox" role="dialog" aria-modal="true">
-        <button id="apllCloseIcon" type="button">×</button>
+    overlay.id = "fallbackFormOverlay";
 
-        <div id="apllFormChip">
-          <span id="apllFormChipDot"></span>
+    overlay.innerHTML = `
+      <div id="fallbackFormBox" role="dialog" aria-modal="true">
+        <button id="fallbackCloseIcon" type="button">×</button>
+
+        <div id="fallbackFormChip">
+          <span id="fallbackChipDot"></span>
           <span>Offline booking</span>
         </div>
 
         <h2>Book an Appointment</h2>
-        <p id="apllFormSubtitle">
-          Server offline — but WhatsApp booking still works normally.
-        </p>
+        <p id="fallbackSubtitle">This offline mode still works with WhatsApp.</p>
 
-        <form id="apllForm">
+        <form id="fallbackForm">
 
-          <label for="apllService">Service</label>
-          <input id="apllService" type="text" readonly autocomplete="off" />
+          <label for="fallbackService">Service</label>
+          <input id="fallbackService" type="text" readonly autocomplete="off" />
 
-          <label for="apllName">Name</label>
-          <input id="apllName" type="text" placeholder="Your name"
+          <label for="fallbackName">Name</label>
+          <input id="fallbackName" type="text" placeholder="Your name"
                  autocomplete="name" required />
 
-          <label for="apllPhone">Phone</label>
-          <input id="apllPhone" type="tel" placeholder="Your phone number"
-                 inputmode="tel" autocomplete="tel" required />
+          <label for="fallbackPhone">Phone</label>
+          <input id="fallbackPhone" type="tel" placeholder="Your phone number"
+                 autocomplete="tel" inputmode="tel" required />
 
-          <label for="apllDate">Date</label>
-          <input id="apllDate" type="date" required autocomplete="off" />
+          <label for="fallbackDate">Date</label>
+          <input id="fallbackDate" type="date" required autocomplete="off" />
 
-          <label for="apllTime">Time</label>
-          <select id="apllTime" required>
+          <label for="fallbackTime">Time</label>
+          <select id="fallbackTime" required>
             <option value="">Select a time</option>
           </select>
 
-          <button id="apllSubmit" type="submit">Send via WhatsApp</button>
-          <button id="apllClose" type="button">Close</button>
+          <button id="fallbackSubmit" type="submit">Send via WhatsApp</button>
+          <button id="fallbackClose" type="button">Close</button>
 
         </form>
       </div>
@@ -63,43 +62,42 @@ console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
 
     document.body.appendChild(overlay);
 
-    /* ----------------------------------------------------
-       JS LOGIC — SAME AS advancedForm.js
-    ---------------------------------------------------- */
+    /* -----------------------------------------------------
+       JS LOGIC (same as advancedForm.js)
+    ----------------------------------------------------- */
 
     const WHATSAPP = "393318358086";
-
     const TIME_SLOTS = [
       "09:00","09:30","10:00","10:30",
       "11:00","11:30","15:00","15:30",
       "16:00","16:30","17:00","17:30"
     ];
 
-    const serviceField = overlay.querySelector("#apllService");
-    const nameField    = overlay.querySelector("#apllName");
-    const phoneField   = overlay.querySelector("#apllPhone");
-    const dateField    = overlay.querySelector("#apllDate");
-    const timeField    = overlay.querySelector("#apllTime");
+    const serviceField = overlay.querySelector("#fallbackService");
+    const nameField    = overlay.querySelector("#fallbackName");
+    const phoneField   = overlay.querySelector("#fallbackPhone");
+    const dateField    = overlay.querySelector("#fallbackDate");
+    const timeField    = overlay.querySelector("#fallbackTime");
 
-    const closeBtn     = overlay.querySelector("#apllClose");
-    const closeIconBtn = overlay.querySelector("#apllCloseIcon");
-    const submitBtn    = overlay.querySelector("#apllSubmit");
+    const submitBtn    = overlay.querySelector("#fallbackSubmit");
+    const closeBtn     = overlay.querySelector("#fallbackClose");
+    const closeIconBtn = overlay.querySelector("#fallbackCloseIcon");
 
-    /* Date setup */
-    const today   = new Date();
+    /* Setup dates */
+    const today = new Date();
     const maxDate = new Date();
     maxDate.setDate(today.getDate() + 14);
 
     const toInput = d => d.toISOString().split("T")[0];
-    const todayStr = toInput(today);
 
+    const todayStr = toInput(today);
     dateField.min = todayStr;
     dateField.max = toInput(maxDate);
     dateField.value = todayStr;
 
     function isClosedDate(d) {
       const day = d.getDay();
-      return day === 0 || day === 6;
+      return (day === 0 || day === 6);
     }
 
     function fillTimeSlots() {
@@ -107,13 +105,11 @@ console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
       timeField.innerHTML = "";
 
       if (isClosedDate(d)) {
-        timeField.classList.add("apll-closed");
         timeField.disabled = true;
         timeField.innerHTML = `<option value="">Closed (weekend)</option>`;
         return;
       }
 
-      timeField.classList.remove("apll-closed");
       timeField.disabled = false;
       timeField.innerHTML = `<option value="">Select a time</option>`;
       TIME_SLOTS.forEach(t => {
@@ -130,6 +126,7 @@ console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
     function lockScroll() { document.body.classList.add("overlay-lock"); }
     function unlockScroll() { document.body.classList.remove("overlay-lock"); }
 
+    /* Close handlers */
     function hideOverlay() {
       unlockScroll();
       overlay.classList.remove("is-visible");
@@ -137,11 +134,12 @@ console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
 
     closeBtn.onclick = hideOverlay;
     closeIconBtn.onclick = hideOverlay;
+
     overlay.addEventListener("click", e => {
       if (e.target === overlay) hideOverlay();
     });
 
-    /* WhatsApp send */
+    /* WhatsApp sending */
     submitBtn.addEventListener("click", e => {
       e.preventDefault();
 
@@ -166,19 +164,20 @@ console.log("[fallbackForm] Loaded (OFFLINE VERSION)");
 • Date: ${formatted}
 • Time: ${time}
 
-(Offline version)
+(Offline form)
 Thank you`;
 
-      window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
+      const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank");
     });
 
     fillTimeSlots();
 
-    /* ----------------------------------------------------
-       GLOBAL FUNCTION (required by loadForm.js)
-    ---------------------------------------------------- */
+    /* -----------------------------------------------------
+       Global open entry
+    ----------------------------------------------------- */
     window.apllOpenFallbackForm = function (serviceName) {
-      console.log("[fallbackForm] Opening fallback form:", serviceName);
+      console.log("[fallbackForm] Opening fallback with:", serviceName);
 
       serviceField.value = serviceName || "Service";
       nameField.value = "";
