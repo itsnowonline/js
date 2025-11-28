@@ -16,20 +16,13 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
 
 (function () {
 
-  // Avoid duplicates
   if (document.querySelector("#fallbackFormOverlay")) return;
 
-  // -----------------------------------------------------
-  // LOAD CSS (fallbackForm.css)
-  // -----------------------------------------------------
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = "/css/fallbackForm.css";
   document.head.appendChild(link);
 
-  // -----------------------------------------------------
-  // MAIN FORM OVERLAY HTML
-  // -----------------------------------------------------
   const overlay = document.createElement("div");
   overlay.id = "fallbackFormOverlay";
   overlay.innerHTML = `
@@ -55,7 +48,11 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
         <input id="apllName" type="text" placeholder="Your name" autocomplete="name" required />
 
         <label for="apllEmail">Email</label>
-        <input id="apllEmail" type="email" placeholder="Your email" autocomplete="email" required />
+        <input id="apllEmail"
+               type="email"
+               placeholder="Your email"
+               autocomplete="email"
+               required />
 
         <label>Phone</label>
         <div class="apll-phone-row">
@@ -87,9 +84,6 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
   `;
   document.body.appendChild(overlay);
 
-  // -----------------------------------------------------
-  // COUNTRY SHEET HTML
-  // -----------------------------------------------------
   const countrySheet = document.createElement("div");
   countrySheet.id = "apllCountrySheet";
   countrySheet.innerHTML = `
@@ -104,9 +98,6 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
   `;
   document.body.appendChild(countrySheet);
 
-  // -----------------------------------------------------
-  // ELEMENT REFS
-  // -----------------------------------------------------
   const WHATSAPP = "393318358086";
 
   const TIME_SLOTS = [
@@ -130,14 +121,10 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
   const closeBtn         = overlay.querySelector("#apllClose");
   const closeIconBtn     = overlay.querySelector("#apllCloseIcon");
 
-  // Sheet refs
   const sheetBackdrop    = countrySheet.querySelector(".apll-country-sheet-backdrop");
   const searchInput      = countrySheet.querySelector("#apllCountrySearch");
   const countryListEl    = countrySheet.querySelector("#apllCountryList");
 
-  // -----------------------------------------------------
-  // KEYBOARD STATE
-  // -----------------------------------------------------
   let keyboardOpen = false;
 
   function setKeyboardState(isOpen) {
@@ -146,9 +133,6 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     else document.body.classList.remove("apll-keyboard-open");
   }
 
-  // -----------------------------------------------------
-  // COUNTRY DATA
-  // -----------------------------------------------------
   const rawCountries = Array.isArray(window.APLL_COUNTRIES) ? window.APLL_COUNTRIES : [];
 
   const COUNTRY_LIST = rawCountries.slice().sort((a, b) => {
@@ -172,14 +156,10 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     countryCodeSpan.textContent = c.code;
   }
 
-  // Default country
   const defaultCountry =
     COUNTRY_LIST.find(c => c.code === "+39") || COUNTRY_LIST[0];
   setCurrentCountry(defaultCountry);
 
-  // -----------------------------------------------------
-  // RENDER COUNTRY LIST
-  // -----------------------------------------------------
   function renderCountryList(filterText) {
     const q = (filterText || "").trim().toLowerCase();
     countryListEl.innerHTML = "";
@@ -206,9 +186,6 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     countryListEl.scrollTop = 0;
   }
 
-  // -----------------------------------------------------
-  // COUNTRY SHEET OPEN/CLOSE
-  // -----------------------------------------------------
   function openCountrySheet() {
     document.getElementById("apllCountrySheet").classList.add("is-visible");
     searchInput.value = "";
@@ -225,12 +202,8 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
   countryTrigger.onclick = openCountrySheet;
   sheetBackdrop.onclick = closeCountrySheet;
 
-  // Search input
   searchInput.addEventListener("input", e => renderCountryList(e.target.value));
 
-  // -----------------------------------------------------
-  // PHONE INPUT AUTO-DETECT
-  // -----------------------------------------------------
   function detectCountry(raw) {
     if (!raw) return null;
     let s = raw.replace(/\s+/g, "");
@@ -260,9 +233,6 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
     }
   });
 
-  // -----------------------------------------------------
-  // DATE / TIME LOGIC
-  // -----------------------------------------------------
   const today = new Date();
   const maxDate = new Date();
   maxDate.setDate(today.getDate() + 14);
@@ -273,6 +243,16 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
   dateField.min = todayStr;
   dateField.max = toInput(maxDate);
   dateField.value = todayStr;
+
+  dateField.addEventListener("input", () => {
+    const selected = new Date(dateField.value);
+    const todayFix = new Date();
+    todayFix.setHours(0,0,0,0);
+
+    if (selected < todayFix) {
+      dateField.value = todayStr;
+    }
+  });
 
   function isClosed(d) {
     const day = d.getDay();
@@ -302,9 +282,6 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
   dateField.onchange = fillTimes;
   fillTimes();
 
-  // -----------------------------------------------------
-  // SCROLL LOCK
-  // -----------------------------------------------------
   function lockScroll()   { document.body.classList.add("overlay-lock"); }
   function unlockScroll() { document.body.classList.remove("overlay-lock"); }
 
@@ -316,11 +293,9 @@ console.log("[fallbackForm] Loaded (OFFLINE PREMIUM VERSION)");
 
   closeBtn.onclick = hideOverlay;
   closeIconBtn.onclick = hideOverlay;
+
   overlay.onclick = e => { if (e.target === overlay) hideOverlay(); };
 
-  // -----------------------------------------------------
-  // SUBMIT → WhatsApp
-  // -----------------------------------------------------
   submitBtn.onclick = e => {
     e.preventDefault();
 
@@ -354,9 +329,6 @@ Thank you`;
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
-  // -----------------------------------------------------
-  // GLOBAL OPEN FUNCTION
-  // -----------------------------------------------------
   window.apllOpenForm = function (serviceName) {
     serviceField.value = serviceName || "Service";
     nameField.value = "";
@@ -369,7 +341,6 @@ Thank you`;
     lockScroll();
     overlay.classList.add("is-visible");
 
-    // Keyboard handling (iOS)
     try {
       window.addEventListener("keyboardDidShow", () => {
         document.documentElement.classList.add("keyboard-open");
