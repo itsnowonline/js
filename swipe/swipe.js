@@ -1,154 +1,195 @@
-// =============================================
-//  MENU NAVIGATION + Trigger 2 (Overscroll)
-// =============================================
+// =====================================
+//   Swipe Alert Tutorial (Auto Close)
+//   FULL FILE — 1→2→3 (RTL) + 3→2→1 (LTR)
+//   CDN SAFE VERSION
+// =====================================
 
-import * as pages from "./menuPages.js";
-import { startSwipeTutorial } from "https://itsnowonline.github.io/js/swipe/swipe.js";
+export function startSwipeTutorial() {
 
-// -------------------------------
-// Tutorial Cooldown System
-// -------------------------------
-const LS_KEY = "harrys_swipe_last_run";
-const COOLDOWN_MS = 180 * 60 * 1000; // 180 minutes
+    const CDN = "https://itsnowonline.github.io/js/swipe/";
 
-function canRunTutorial() {
-    const last = localStorage.getItem(LS_KEY);
-    if (!last) return true;
-    return (Date.now() - Number(last)) >= COOLDOWN_MS;
-}
+    // ---------- LIGHT OVERLAY ----------
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(0,0,0,0.35)";
+    overlay.style.backdropFilter = "blur(2px)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "999999";
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity 0.25s ease";
+    document.body.appendChild(overlay);
 
-function markTutorialRun() {
-    localStorage.setItem(LS_KEY, Date.now().toString());
-}
+    requestAnimationFrame(() => overlay.style.opacity = "1");
 
+    // ---------- ALERT BOX ----------
+    const box = document.createElement("div");
+    box.style.width = "220px";
+    box.style.aspectRatio = "540/800";
+    box.style.borderRadius = "16px";
+    box.style.background = "#0b2317";
+    box.style.border = "1px solid rgba(255,255,255,0.22)";
+    box.style.position = "relative";
+    box.style.overflow = "hidden";
+    box.style.boxShadow = "0 8px 20px rgba(0,0,0,0.4)";
+    overlay.appendChild(box);
 
-// -------------------------------
-// Page Rendering System
-// -------------------------------
-const page0HTML = pages.page0HTML;
-const page1HTML = pages.page1HTML;
-const page2HTML = pages.page2HTML;
-const page3HTML = pages.page3HTML;
-const page4HTML = pages.page4HTML;
-const page5HTML = pages.page5HTML;
+    // ---------- CLOSE BUTTON ----------
+    const closeBtn = document.createElement("div");
+    closeBtn.innerText = "✕";
+    closeBtn.style.position = "absolute";
+    closeBtn.style.top = "6px";
+    closeBtn.style.right = "6px";
+    closeBtn.style.fontSize = "22px";
+    closeBtn.style.color = "white";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.style.userSelect = "none";
+    closeBtn.style.zIndex = "20";
+    box.appendChild(closeBtn);
 
-const app = document.getElementById("app");
+    closeBtn.onclick = () => {
+        overlay.style.opacity = "0";
+        setTimeout(() => overlay.remove(), 250);
+    };
 
-let currentPage = 0;
+    // ---------- PAGE IMAGES ----------
+    const pages = [
+        CDN + "page1.jpg",
+        CDN + "page2.jpg",
+        CDN + "page3.jpg"
+    ];
 
-function render(page) {
-    currentPage = page;
+    const imgA = document.createElement("img");
+    const imgB = document.createElement("img");
 
-    if (page === 0) {
-        app.innerHTML = page0HTML;
-        app.className = "homeMode";
-        attachNavClicks();
-        return;
-    }
-
-    app.className = "menuMode";
-    app.style.opacity = 0;
-
-    const html =
-        page === 1 ? page1HTML :
-        page === 2 ? page2HTML :
-        page === 3 ? page3HTML :
-        page === 4 ? page4HTML :
-        page5HTML;
-
-    setTimeout(() => {
-        app.innerHTML = html;
-        app.style.opacity = 1;
-        attachNavClicks();
-    }, 10);
-}
-
-
-// -------------------------------
-// Left ↔ Right Page Swipes
-// -------------------------------
-function nextPage() {
-    if (currentPage === 0) render(1);
-    else if (currentPage === 1) render(2);
-    else if (currentPage === 2) render(3);
-    else if (currentPage === 3) render(4);
-    else if (currentPage === 4) render(5);
-}
-
-function prevPage() {
-    if (currentPage === 5) render(4);
-    else if (currentPage === 4) render(3);
-    else if (currentPage === 3) render(2);
-    else if (currentPage === 2) render(1);
-    else if (currentPage === 1) render(0);
-}
-
-render(0);
-
-
-// -------------------------------
-// Horizontal Swipe Detection
-// -------------------------------
-let sx = 0;
-let sy = 0;
-
-document.addEventListener("touchstart", e => {
-    const t = e.changedTouches[0];
-    sx = t.clientX;
-    sy = t.clientY;
-});
-
-document.addEventListener("touchend", e => {
-    const t = e.changedTouches[0];
-    const dx = t.clientX - sx;
-    const dy = t.clientY - sy;
-
-    // Ignore vertical swipes
-    if (Math.abs(dy) > Math.abs(dx)) return;
-
-    if (Math.abs(dx) < 40) return;
-
-    if (dx > 0) prevPage();
-    else nextPage();
-});
-
-
-// ================================
-// ⭐ Trigger 2 — Bottom Overscroll
-// ================================
-let overscrollLocked = false;
-
-window.addEventListener("touchend", () => {
-    const atBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 2;
-
-    if (!atBottom) return;
-
-    if (overscrollLocked) return; // prevent double fire in same position
-    overscrollLocked = true;
-    setTimeout(() => overscrollLocked = false, 400); // small unlock delay
-
-    if (canRunTutorial()) {
-        startSwipeTutorial();
-        markTutorialRun();
-    }
-});
-
-
-// -------------------------------
-// Menu & Home Button Click Logic
-// -------------------------------
-function attachNavClicks() {
-
-    // Home buttons
-    document.querySelectorAll(".home-btn").forEach(btn => {
-        btn.onclick = () => render(0);
+    [imgA, imgB].forEach(img => {
+        img.style.position = "absolute";
+        img.style.inset = "0";
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "cover";
+        img.style.opacity = "0";
+        img.style.transition = "none";
     });
 
-    // Menu button (Trigger 3 handled in menuPages.js)
-    document.querySelectorAll(".nav-link").forEach(btn => {
-        if (btn.textContent.trim().toLowerCase() === "menu") {
-            btn.onclick = () => render(1);
+    box.appendChild(imgA);
+    box.appendChild(imgB);
+
+    let current = imgA;
+    let incoming = imgB;
+    let index = 0;
+
+    current.src = pages[0];
+    current.style.opacity = "1";
+
+    // ---------- FINGER ----------
+    const finger = document.createElement("img");
+    finger.src = CDN + "finger.png";
+    finger.style.position = "absolute";
+    finger.style.bottom = "40%";
+    finger.style.width = "40%";
+    finger.style.opacity = "0";
+    finger.style.transition = "none";
+    finger.style.zIndex = "15";
+    box.appendChild(finger);
+
+    // ---------- FINGER SWIPE ----------
+    function fingerSwipe(direction, done) {
+        const duration = 1200;
+        const travelPx = 260;
+
+        finger.style.opacity = "1";
+        finger.style.transition = "none";
+        finger.style.transform = "translateX(0)";
+
+        if (direction === "rtl") {
+            finger.style.right = "-50px";
+            finger.style.left = "auto";
+        } else {
+            finger.style.left = "-50px";
+            finger.style.right = "auto";
         }
-    });
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                finger.style.transition = `transform ${duration}ms ease, opacity 300ms ease`;
+                finger.style.transform =
+                    direction === "rtl"
+                        ? `translateX(-${travelPx}px)`
+                        : `translateX(${travelPx}px)`;
+            });
+        });
+
+        setTimeout(() => {
+            finger.style.opacity = "0";
+            finger.style.transition = "none";
+            finger.style.transform = "translateX(0)";
+            if (done) done();
+        }, duration + 200);
+    }
+
+    // ---------- PAGE SWIPE ----------
+    function swipeTo(targetIndex, direction, done) {
+        incoming.src = pages[targetIndex];
+        incoming.style.opacity = "1";
+
+        incoming.style.transform =
+            direction === "rtl" ? "translateX(100%)" : "translateX(-100%)";
+
+        setTimeout(() => {
+            incoming.style.transition = "transform 0.55s ease";
+            current.style.transition = "transform 0.55s ease";
+
+            incoming.style.transform = "translateX(0)";
+            current.style.transform =
+                direction === "rtl" ? "translateX(-100%)" : "translateX(100%)";
+        }, 50);
+
+        setTimeout(() => {
+            current.style.opacity = "0";
+            current.style.transition = "none";
+            current.style.transform = "translateX(0)";
+            incoming.style.transition = "none";
+
+            let tmp = current;
+            current = incoming;
+            incoming = tmp;
+
+            index = targetIndex;
+
+            if (done) done();
+        }, 600);
+    }
+
+    // ---------- FLOW 1→2→3→2→1 ----------
+    setTimeout(() => {
+        fingerSwipe("rtl", () => {
+            swipeTo(1, "rtl", () => {
+                setTimeout(() => {
+                    fingerSwipe("rtl", () => {
+                        swipeTo(2, "rtl", () => {
+                            setTimeout(() => {
+                                fingerSwipe("ltr", () => {
+                                    swipeTo(1, "ltr", () => {
+                                        setTimeout(() => {
+                                            fingerSwipe("ltr", () => {
+                                                swipeTo(0, "ltr", () => {
+                                                    setTimeout(() => {
+                                                        overlay.style.opacity = "0";
+                                                        setTimeout(() => overlay.remove(), 250);
+                                                    }, 500);
+                                                });
+                                            });
+                                        }, 700);
+                                    });
+                                });
+                            }, 700);
+                        });
+                    });
+                }, 700);
+            });
+        });
+    }, 400);
 }
