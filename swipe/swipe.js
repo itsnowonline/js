@@ -1,206 +1,154 @@
-// =====================================
-//   Swipe Alert Tutorial (Auto Close)
-//   FULL FILE — 1→2→3 (RTL) + 3→2→1 (LTR)
-// =====================================
+// =============================================
+//  MENU NAVIGATION + Trigger 2 (Overscroll)
+// =============================================
 
-export function startSwipeTutorial() {
+import * as pages from "./menuPages.js";
+import { startSwipeTutorial } from "https://itsnowonline.github.io/js/swipe/swipe.js";
 
-    // ---------- LIGHT OVERLAY ----------
-    const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.background = "rgba(0,0,0,0.35)";
-    overlay.style.backdropFilter = "blur(2px)";
-    overlay.style.display = "flex";
-    overlay.style.alignItems = "center";
-    overlay.style.justifyContent = "center";
-    overlay.style.zIndex = "999999";
-    overlay.style.opacity = "0";
-    overlay.style.transition = "opacity 0.25s ease";
-    document.body.appendChild(overlay);
+// -------------------------------
+// Tutorial Cooldown System
+// -------------------------------
+const LS_KEY = "harrys_swipe_last_run";
+const COOLDOWN_MS = 180 * 60 * 1000; // 180 minutes
 
-    requestAnimationFrame(() => (overlay.style.opacity = "1"));
+function canRunTutorial() {
+    const last = localStorage.getItem(LS_KEY);
+    if (!last) return true;
+    return (Date.now() - Number(last)) >= COOLDOWN_MS;
+}
 
-    // ---------- ALERT BOX ----------
-    const box = document.createElement("div");
-    box.style.width = "220px";
-    box.style.aspectRatio = "540/800";
-    box.style.borderRadius = "16px";
-    box.style.background = "#0b2317";
-    box.style.border = "1px solid rgba(255,255,255,0.22)";
-    box.style.position = "relative";
-    box.style.overflow = "hidden";
-    box.style.boxShadow = "0 8px 20px rgba(0,0,0,0.4)";
-    overlay.appendChild(box);
+function markTutorialRun() {
+    localStorage.setItem(LS_KEY, Date.now().toString());
+}
 
-    // ---------- CLOSE BUTTON ----------
-    const closeBtn = document.createElement("div");
-    closeBtn.innerText = "✕";
-    closeBtn.style.position = "absolute";
-    closeBtn.style.top = "6px";
-    closeBtn.style.right = "6px";
-    closeBtn.style.fontSize = "22px";
-    closeBtn.style.color = "white";
-    closeBtn.style.cursor = "pointer";
-    closeBtn.style.userSelect = "none";
-    closeBtn.style.zIndex = "20";
-    box.appendChild(closeBtn);
 
-    closeBtn.onclick = () => {
-        overlay.style.opacity = "0";
-        setTimeout(() => overlay.remove(), 250);
-    };
+// -------------------------------
+// Page Rendering System
+// -------------------------------
+const page0HTML = pages.page0HTML;
+const page1HTML = pages.page1HTML;
+const page2HTML = pages.page2HTML;
+const page3HTML = pages.page3HTML;
+const page4HTML = pages.page4HTML;
+const page5HTML = pages.page5HTML;
 
-    // ---------- PAGE IMAGES ----------
-    const pages = ["page1.jpg", "page2.jpg", "page3.jpg"];
+const app = document.getElementById("app");
 
-    const imgA = document.createElement("img");
-    const imgB = document.createElement("img");
+let currentPage = 0;
 
-    [imgA, imgB].forEach((img) => {
-        img.style.position = "absolute";
-        img.style.inset = "0";
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.objectFit = "cover";
-        img.style.opacity = "0";
-        img.style.transition = "none";
+function render(page) {
+    currentPage = page;
+
+    if (page === 0) {
+        app.innerHTML = page0HTML;
+        app.className = "homeMode";
+        attachNavClicks();
+        return;
+    }
+
+    app.className = "menuMode";
+    app.style.opacity = 0;
+
+    const html =
+        page === 1 ? page1HTML :
+        page === 2 ? page2HTML :
+        page === 3 ? page3HTML :
+        page === 4 ? page4HTML :
+        page5HTML;
+
+    setTimeout(() => {
+        app.innerHTML = html;
+        app.style.opacity = 1;
+        attachNavClicks();
+    }, 10);
+}
+
+
+// -------------------------------
+// Left ↔ Right Page Swipes
+// -------------------------------
+function nextPage() {
+    if (currentPage === 0) render(1);
+    else if (currentPage === 1) render(2);
+    else if (currentPage === 2) render(3);
+    else if (currentPage === 3) render(4);
+    else if (currentPage === 4) render(5);
+}
+
+function prevPage() {
+    if (currentPage === 5) render(4);
+    else if (currentPage === 4) render(3);
+    else if (currentPage === 3) render(2);
+    else if (currentPage === 2) render(1);
+    else if (currentPage === 1) render(0);
+}
+
+render(0);
+
+
+// -------------------------------
+// Horizontal Swipe Detection
+// -------------------------------
+let sx = 0;
+let sy = 0;
+
+document.addEventListener("touchstart", e => {
+    const t = e.changedTouches[0];
+    sx = t.clientX;
+    sy = t.clientY;
+});
+
+document.addEventListener("touchend", e => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+
+    // Ignore vertical swipes
+    if (Math.abs(dy) > Math.abs(dx)) return;
+
+    if (Math.abs(dx) < 40) return;
+
+    if (dx > 0) prevPage();
+    else nextPage();
+});
+
+
+// ================================
+// ⭐ Trigger 2 — Bottom Overscroll
+// ================================
+let overscrollLocked = false;
+
+window.addEventListener("touchend", () => {
+    const atBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 2;
+
+    if (!atBottom) return;
+
+    if (overscrollLocked) return; // prevent double fire in same position
+    overscrollLocked = true;
+    setTimeout(() => overscrollLocked = false, 400); // small unlock delay
+
+    if (canRunTutorial()) {
+        startSwipeTutorial();
+        markTutorialRun();
+    }
+});
+
+
+// -------------------------------
+// Menu & Home Button Click Logic
+// -------------------------------
+function attachNavClicks() {
+
+    // Home buttons
+    document.querySelectorAll(".home-btn").forEach(btn => {
+        btn.onclick = () => render(0);
     });
 
-    box.appendChild(imgA);
-    box.appendChild(imgB);
-
-    let current = imgA;
-    let incoming = imgB;
-    let index = 0;
-
-    current.src = pages[0];
-    current.style.opacity = "1";
-
-    // ---------- FINGER ----------
-    const finger = document.createElement("img");
-    finger.src = "finger.png";
-    finger.style.position = "absolute";
-    finger.style.bottom = "40%";
-    finger.style.width = "40%"; //width
-    finger.style.opacity = "0";
-    finger.style.transition = "none";
-    finger.style.zIndex = "15";
-    box.appendChild(finger);
-
-    // ---------- FINGER SWIPE (directional) ----------
-    function fingerSwipe(direction, done) {
-        const duration = 1200; // ms
-        const travelPx = 260;  // approx box width + margins
-
-        finger.style.opacity = "1";
-        finger.style.transition = "none";
-        finger.style.transform = "translateX(0)";
-
-        if (direction === "rtl") {
-            // start: -50px from right, go to +50px left side
-            finger.style.right = "-50px";
-            finger.style.left = "auto";
-        } else {
-            // ltr: start -50px from left, go to +50px right side
-            finger.style.left = "-50px";
-            finger.style.right = "auto";
+    // Menu button (Trigger 3 handled in menuPages.js)
+    document.querySelectorAll(".nav-link").forEach(btn => {
+        if (btn.textContent.trim().toLowerCase() === "menu") {
+            btn.onclick = () => render(1);
         }
-
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                finger.style.transition = `transform ${duration}ms ease, opacity 300ms ease`;
-                if (direction === "rtl") {
-                    // move right -> left
-                    finger.style.transform = `translateX(-${travelPx}px)`;
-                } else {
-                    // move left -> right
-                    finger.style.transform = `translateX(${travelPx}px)`;
-                }
-            });
-        });
-
-        setTimeout(() => {
-            finger.style.opacity = "0";
-            finger.style.transition = "none";
-            finger.style.transform = "translateX(0)";
-            if (done) done();
-        }, duration + 200);
-    }
-
-    // ---------- PAGE SWIPE (directional) ----------
-    function swipeTo(targetIndex, direction, done) {
-        incoming.src = pages[targetIndex];
-        incoming.style.opacity = "1";
-
-        if (direction === "rtl") {
-            // new page from right, old to left
-            incoming.style.transform = "translateX(100%)";
-        } else {
-            // new page from left, old to right
-            incoming.style.transform = "translateX(-100%)";
-        }
-
-        setTimeout(() => {
-            incoming.style.transition = "transform 0.55s ease";
-            current.style.transition = "transform 0.55s ease";
-
-            incoming.style.transform = "translateX(0)";
-            current.style.transform =
-                direction === "rtl" ? "translateX(-100%)" : "translateX(100%)";
-        }, 50);
-
-        setTimeout(() => {
-            current.style.opacity = "0";
-            current.style.transition = "none";
-            current.style.transform = "translateX(0)";
-            incoming.style.transition = "none";
-
-            let tmp = current;
-            current = incoming;
-            incoming = tmp;
-
-            index = targetIndex;
-
-            if (done) done();
-        }, 600);
-    }
-
-    // ---------- FULL FLOW: 1→2→3→2→1 ----------
-    setTimeout(() => {
-        // 1 → 2 (RTL)
-        fingerSwipe("rtl", () => {
-            swipeTo(1, "rtl", () => {
-                // 2 → 3 (RTL)
-                setTimeout(() => {
-                    fingerSwipe("rtl", () => {
-                        swipeTo(2, "rtl", () => {
-                            // 3 → 2 (LTR)
-                            setTimeout(() => {
-                                fingerSwipe("ltr", () => {
-                                    swipeTo(1, "ltr", () => {
-                                        // 2 → 1 (LTR)
-                                        setTimeout(() => {
-                                            fingerSwipe("ltr", () => {
-                                                swipeTo(0, "ltr", () => {
-                                                    // AUTO CLOSE
-                                                    setTimeout(() => {
-                                                        overlay.style.opacity = "0";
-                                                        setTimeout(
-                                                            () => overlay.remove(),
-                                                            250
-                                                        );
-                                                    }, 500);
-                                                });
-                                            });
-                                        }, 700);
-                                    });
-                                });
-                            }, 700);
-                        });
-                    });
-                }, 700);
-            });
-        });
-    }, 400);
+    });
 }
